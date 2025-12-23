@@ -1,0 +1,315 @@
+﻿@page "/xac-nhan-gio-nckh"
+@attribute [Authorize]
+
+@using api.Models.QLKHCanBo
+@using QLCongViec.Models
+@using QLCongViec.Models.HeThong
+@using iText.IO.Font
+@using iText.IO.Font.Constants
+@using iText.Kernel.Font
+@using iText.Kernel.Pdf
+@using iText.Layout
+@using iText.Layout.Element
+@using iText.Layout.Properties
+@inject ClientServices client
+@inject ApiServices apiService
+@inject NotificationService notificationService
+@inject AuthenServices authenService
+@inject IWebHostEnvironment env
+@inject NavigationManager NavigationManager
+
+<h3 style="
+    color: #0b2e6f;
+    font-weight: 800;
+    font-size: 26px;
+    text-transform: uppercase;
+    text-align: center;
+    letter-spacing: 1px;
+    margin: 16px 0 24px;
+">
+    <i class="bx bx-badge-check" style="margin-right:6px; font-size:22px;"></i>
+    Xác nhận giờ nghiên cứu khoa học
+</h3>
+
+<RadzenCard Style="margin-bottom: 16px;">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <RadzenDropDown TValue="string"
+                            Data="@NamHocList"
+                            @bind-Value="NamHoc"
+                            AllowClear="true"
+                            Placeholder="Chọn năm học"
+                            Style="width:100%" />
+        </div>
+        <div class="col-md-4">
+            <RadzenDropDown TValue="int?"
+                            Data="@DonViList"
+                            TextProperty="DonVi"
+                            ValueProperty="IdDonVi"
+                            @bind-Value="IdDonVi"
+                            AllowClear="true"
+                            Placeholder="Chọn đơn vị"
+                            Style="width:100%" />
+        </div>
+        <div class="col-md-4">
+            <RadzenDatePicker TValue="DateOnly?"
+                              @bind-Value="NgayXacNhan"
+                              DateFormat="dd/MM/yyyy"
+                              Style="width:100%"
+                              Placeholder="Ngày xác nhận" />
+        </div>
+    </div>
+</RadzenCard>
+
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <RadzenButton Text="Xuất file PDF"
+                  Icon="picture_as_pdf"
+                  ButtonStyle="ButtonStyle.Success"
+                  Click="@ExportPdfAsync" />
+    <RadzenButton Text="Gửi xác nhận"
+                  Icon="send"
+                  ButtonStyle="ButtonStyle.Primary"
+                  Click="@GuiXacNhanAsync" />
+    @if (!string.IsNullOrWhiteSpace(FilePdfUrl))
+    {
+        <RadzenButton Text="Tải file PDF"
+                      Icon="download"
+                      ButtonStyle="ButtonStyle.Info"
+                      Click="@(() => OpenFile(FilePdfUrl))" />
+    }
+</div>
+
+<Waiting Show="@isLoading" Message="Đang tải dữ liệu..." />
+
+<RadzenDataGrid Data="@FilteredTongHop"
+                TItem="tbTongHopGioNCKH"
+                AllowPaging="true"
+                PageSize="10">
+    <Columns>
+        <RadzenDataGridColumn Title="STT" Width="60px" TextAlign="TextAlign.Center">
+            <Template Context="item">
+                @(FilteredTongHop.IndexOf(item) + 1)
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn Title="Giảng viên" Width="220px">
+            <Template Context="item">
+                @GetTenCanBo(item.IdCanBo)
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn Title="Đơn vị" Width="220px">
+            <Template Context="item">
+                @GetTenDonVi(item.IdDonVi)
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn Property="NamHoc" Title="Năm học" Width="120px" />
+        <RadzenDataGridColumn Title="Tổng giờ" TextAlign="TextAlign.Center" Width="120px">
+            <Template Context="item">
+                @(item.SoGioNCKH ?? 0)
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    bool isLoading = true;
+
+    List<tbTongHopGioNCKH> TongHopGioNCKHs = new();
+    List<tbUser> Users = new();
+    List<tbDonVi> DonViList = new();
+    List<string> NamHocList = new();
+
+    string? NamHoc;
+    int? IdDonVi;
+    DateOnly? NgayXacNhan = DateOnly.FromDateTime(DateTime.Now);
+
+    string? FilePdfUrl;
+    int? CurrentCanBoId;
+
+    List<tbTongHopGioNCKH> FilteredTongHop => TongHopGioNCKHs
+        .Where(item => string.IsNullOrWhiteSpace(NamHoc) || item.NamHoc == NamHoc)
+        .Where(item => !IdDonVi.HasValue || item.IdDonVi == IdDonVi)
+        .OrderBy(item => item.IdCanBo ?? 0)
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            TongHopGioNCKHs = await client.apiSevices.GetAll<tbTongHopGioNCKH>() ?? new();
+            Users = await apiService.GetAll<tbUser>() ?? new();
+            DonViList = await apiService.GetAll<tbDonVi>() ?? new();
+
+            NamHocList = TongHopGioNCKHs
+                .Where(x => !string.IsNullOrWhiteSpace(x.NamHoc))
+                .Select(x => x.NamHoc!)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToList();
+
+            var userName = await authenService.GetUserName();
+            CurrentCanBoId = Users.FirstOrDefault(u => u.UserName == userName)?.IdCanBo;
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(NotificationSeverity.Error, "Lỗi", ex.Message, 4000);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    string GetTenCanBo(int? idCanBo)
+    {
+        if (!idCanBo.HasValue)
+        {
+            return "Chưa xác định";
+        }
+
+        return Users.FirstOrDefault(u => u.IdCanBo == idCanBo)?.FullName ?? $"CB {idCanBo}";
+    }
+
+    string GetTenDonVi(int? idDonVi)
+    {
+        if (!idDonVi.HasValue)
+        {
+            return "Chưa xác định";
+        }
+
+        return DonViList.FirstOrDefault(d => d.IdDonVi == idDonVi)?.DonVi ?? $"ĐV {idDonVi}";
+    }
+
+    async Task ExportPdfAsync()
+    {
+        var data = FilteredTongHop;
+        if (data.Count == 0)
+        {
+            notificationService.Notify(NotificationSeverity.Warning, "Thông báo", "Không có dữ liệu để xuất.", 3000);
+            return;
+        }
+
+        var saveFolder = Path.Combine(env.WebRootPath, "SaveFile");
+        Directory.CreateDirectory(saveFolder);
+
+        var fileName = $"xac-nhan-gio-nckh-{DateTime.Now:yyyyMMddHHmmss}.pdf";
+        var filePath = Path.Combine(saveFolder, fileName);
+
+        var fontPath = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
+        var boldFontPath = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf";
+        var font = File.Exists(fontPath)
+            ? PdfFontFactory.CreateFont(fontPath, PdfEncodings.IDENTITY_H)
+            : PdfFontFactory.CreateFont(StandardFonts.HELVETICA);
+        var boldFont = File.Exists(boldFontPath)
+            ? PdfFontFactory.CreateFont(boldFontPath, PdfEncodings.IDENTITY_H)
+            : PdfFontFactory.CreateFont(StandardFonts.HELVETICA_BOLD);
+
+        using var writer = new PdfWriter(filePath);
+        using var pdf = new PdfDocument(writer);
+        using var document = new Document(pdf);
+        document.SetFont(font);
+
+        var tieuDe = new Paragraph("BẢNG XÁC NHẬN GIỜ NGHIÊN CỨU KHOA HỌC")
+            .SetFont(boldFont)
+            .SetTextAlignment(TextAlignment.CENTER)
+            .SetFontSize(14);
+        document.Add(tieuDe);
+
+        document.Add(new Paragraph($"Năm học: {NamHoc ?? "Toàn bộ"}").SetFontSize(11));
+        var donViXacNhan = IdDonVi.HasValue ? GetTenDonVi(IdDonVi) : "Toàn bộ";
+        document.Add(new Paragraph($"Đơn vị: {donViXacNhan}").SetFontSize(11));
+        var ngayXacNhanText = NgayXacNhan?.ToString("dd/MM/yyyy") ?? "";
+        document.Add(new Paragraph($"Ngày xác nhận: {ngayXacNhanText}").SetFontSize(11));
+        document.Add(new Paragraph(" "));
+
+        var table = new Table(new float[] { 1, 4, 3, 2, 2 })
+            .UseAllAvailableWidth();
+
+        table.AddHeaderCell("STT");
+        table.AddHeaderCell("Giảng viên");
+        table.AddHeaderCell("Đơn vị");
+        table.AddHeaderCell("Năm học");
+        table.AddHeaderCell("Tổng giờ");
+
+        int index = 1;
+        foreach (var item in data)
+        {
+            table.AddCell(index.ToString());
+            table.AddCell(GetTenCanBo(item.IdCanBo));
+            table.AddCell(GetTenDonVi(item.IdDonVi));
+            table.AddCell(item.NamHoc ?? "");
+            table.AddCell((item.SoGioNCKH ?? 0).ToString());
+            index++;
+        }
+
+        document.Add(table);
+
+        FilePdfUrl = $"/SaveFile/{fileName}";
+
+        notificationService.Notify(
+            NotificationSeverity.Success,
+            "Thành công",
+            "Đã xuất file PDF.",
+            3000);
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task GuiXacNhanAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NamHoc) || !IdDonVi.HasValue)
+        {
+            notificationService.Notify(
+                NotificationSeverity.Warning,
+                "Thông báo",
+                "Vui lòng chọn năm học và đơn vị trước khi gửi.",
+                3000);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(FilePdfUrl))
+        {
+            notificationService.Notify(
+                NotificationSeverity.Warning,
+                "Thông báo",
+                "Vui lòng xuất file PDF trước khi gửi xác nhận.",
+                3000);
+            return;
+        }
+
+        try
+        {
+            var record = new tbXacNhanGioNCKH
+            {
+                IdDonVi = IdDonVi,
+                NamHoc = NamHoc,
+                IdCanBoXacNhan = CurrentCanBoId,
+                FileTongHop = FilePdfUrl,
+                NgayXacNhan = NgayXacNhan ?? DateOnly.FromDateTime(DateTime.Now)
+            };
+
+            await client.apiSevices.Create<tbXacNhanGioNCKH>(record);
+
+            notificationService.Notify(
+                NotificationSeverity.Success,
+                "Đã gửi",
+                "Xác nhận đã được gửi đến P.QLĐT.",
+                3000);
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(
+                NotificationSeverity.Error,
+                "Lỗi",
+                ex.Message,
+                4000);
+        }
+    }
+
+    void OpenFile(string url)
+    {
+        if (!string.IsNullOrWhiteSpace(url))
+        {
+            NavigationManager.NavigateTo(url, true);
+        }
+    }
+}
