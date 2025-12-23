@@ -1,0 +1,72 @@
+﻿@using api.Models.QLKHCanBo
+@inject ClientServices client
+@inject NotificationService notificationService
+@inject DialogService dialog
+
+<RadzenCard Style="padding:16px">
+    <h5>🏆 Thống kê kết quả đánh giá</h5>
+
+    <RadzenDataGrid Data="@data" TItem="XepLoaiVM">
+        <Columns>
+            <RadzenDataGridColumn Property="XepLoai" Title="Xếp loại" />
+            <RadzenDataGridColumn Property="SoLuong" Title="Số lượng" />
+
+            <RadzenDataGridColumn Title="Thao tác">
+                <Template Context="item">
+                    <RadzenButton Icon="search"
+                                  Size="ButtonSize.Small"
+                                  Click="@(() => XemChiTiet(item.XepLoai))" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+    </RadzenCard>
+
+@code {
+    List<XepLoaiVM> data = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var list = await client.apiSevices.GetAll<tbDeTaiKHCanBo>();
+
+        if (list == null) return;
+
+        data = list
+            .Where(x => !string.IsNullOrWhiteSpace(x.XepLoai))
+            .GroupBy(x => x.XepLoai!)
+            .Select(g => new XepLoaiVM
+            {
+                XepLoai = g.Key,
+                SoLuong = g.Count()
+            })
+            .ToList();
+    }
+    async Task XemChiTiet(string xepLoai)
+    {
+        var list = await client.apiSevices.GetAll<tbDeTaiKHCanBo>();
+
+        var data = list
+        .Where(x => x.XepLoai == xepLoai)
+        .ToList();
+
+        await dialog.OpenAsync(
+        $"Chi tiết đề tài - {xepLoai}",
+        ds => @<RadzenDataGrid Data="@data" TItem="tbDeTaiKHCanBo">
+                <Columns>
+                    <RadzenDataGridColumn Property="MaSo" Title="Mã số" />
+                    <RadzenDataGridColumn Property="TenDeTai" Title="Tên đề tài" />
+                    <RadzenDataGridColumn Property="DonViChuTri" Title="Đơn vị" />
+                    <RadzenDataGridColumn Property="NamHoc" Title="Năm học" />
+                </Columns>
+        </RadzenDataGrid>,
+        new DialogOptions { Width = "800px", Height = "500px" }
+    );
+    }
+
+
+    class XepLoaiVM
+    {
+        public string XepLoai { get; set; } = "";
+        public int SoLuong { get; set; }
+    }
+}

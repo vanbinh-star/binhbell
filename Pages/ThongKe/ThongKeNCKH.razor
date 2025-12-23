@@ -1,0 +1,148 @@
+﻿@page "/thong-ke"
+@using api.Models.QLKHCanBo
+@inject ClientServices client
+
+<RadzenCard Style="padding:16px">
+    <h4>📊 Thống kê NCKH</h4>
+
+    <RadzenDropDown Data="@LoaiThongKes"
+                    TextProperty="Text"
+                    ValueProperty="Value"
+                    @bind-Value="LoaiThongKe"
+                    Style="width:300px" />
+
+    <hr />
+
+    @if (LoaiThongKe == "count")
+    {
+        <FilterCount @bind-NamHoc="NamHoc"
+                     @bind-CapDeTai="CapDeTai" />
+    }
+    else if (LoaiThongKe == "progress")
+    {
+        <FilterProgress @bind-NamHoc="NamHoc"
+                        @bind-DonVi="DonVi" />
+    }
+    else
+    {
+        <FilterRate @bind-DonVi="DonVi" />
+    }
+
+    <RadzenButton Text="📈 Thống kê"
+                  Click="ThongKe"
+                  Style="margin-top:10px" />
+
+    <hr />
+
+    @if (LoaiThongKe == "count")
+    {
+        <ResultCount Data="CountResult" />
+    }
+    else if (LoaiThongKe == "progress")
+    {
+        <ResultProgress Data="ProgressResult" />
+    }
+    else
+    {
+        <ResultRate Data="RateResult" />
+    }
+</RadzenCard>
+
+@code {
+    string LoaiThongKe = "count";
+
+    string? NamHoc;
+    string? CapDeTai;
+    string? DonVi;
+
+    List<tbDeTaiKHCanBo> DataSource = new();
+
+    List<CountVM>? CountResult;
+    ProgressVM? ProgressResult;
+    List<RateVM>? RateResult;
+
+    List<object> LoaiThongKes = new()
+    {
+        new { Text = "Thống kê số lượng", Value = "count" },
+        new { Text = "Thống kê tiến độ", Value = "progress" },
+        new { Text = "Thống kê xếp loại", Value = "rate" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        DataSource = await client.apiSevices.GetAll<tbDeTaiKHCanBo>();
+    }
+
+    void ThongKe()
+    {
+        var q = DataSource.AsQueryable();
+
+        if (!string.IsNullOrEmpty(NamHoc))
+            q = q.Where(x => x.NamHoc == NamHoc);
+
+        if (!string.IsNullOrEmpty(DonVi))
+            q = q.Where(x => x.DonViChuTri.Contains(DonVi));
+
+        if (LoaiThongKe == "count")
+        {
+            CountResult = q
+                .GroupBy(x => new { x.NamHoc, x.IdCapDeTai })
+                .Select(g => new CountVM
+                {
+                    NamHoc = g.Key.NamHoc,
+                    CapDeTai = g.Key.IdCapDeTai.ToString(),
+                    SoLuong = g.Count()
+                }).ToList();
+        }
+        else if (LoaiThongKe == "progress")
+        {
+            var now = DateOnly.FromDateTime(DateTime.Now);
+
+            var hoanThanh = q.Count(x => x.NgayNghiemThu != null);
+            var dangTH = q.Count(x => x.NgayNghiemThu == null && now <= x.HanHoanThanh);
+            var quaHan = q.Count(x => x.NgayNghiemThu == null && now > x.HanHoanThanh);
+
+            ProgressResult = new ProgressVM
+            {
+                HoanThanh = hoanThanh,
+                DangThucHien = dangTH,
+                QuaHan = quaHan,
+                PhanTramHoanThanh =
+                    (hoanThanh + dangTH + quaHan) == 0 ? 0 :
+                    hoanThanh * 100 / (hoanThanh + dangTH + quaHan)
+            };
+        }
+        else
+        {
+            RateResult = q
+                .Where(x => !string.IsNullOrEmpty(x.XepLoai))
+                .GroupBy(x => x.XepLoai)
+                .Select(g => new RateVM
+                {
+                    XepLoai = g.Key!,
+                    SoLuong = g.Count()
+                }).ToList();
+        }
+    }
+
+    public class CountVM
+    {
+        public string? NamHoc { get; set; }
+        public string? CapDeTai { get; set; }
+        public int SoLuong { get; set; }
+    }
+
+    public class ProgressVM
+    {
+        public int HoanThanh { get; set; }
+        public int DangThucHien { get; set; }
+        public int QuaHan { get; set; }
+        public int PhanTramHoanThanh { get; set; }
+    }
+
+    public class RateVM
+    {
+        public string XepLoai { get; set; } = "";
+        public int SoLuong { get; set; }
+    }
+}

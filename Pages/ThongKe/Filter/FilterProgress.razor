@@ -1,0 +1,42 @@
+﻿<RadzenCard Style="margin-bottom:10px">
+    <h6>⏱️ Tiêu chí thống kê tiến độ</h6>
+
+    <div class="row">
+        <div class="col-md-4">
+            <RadzenDropDown Data="@NamHocs"
+                            Value="@NamHoc"
+                            ValueChanged="@(v => OnNamHocChanged(v))"
+                            Placeholder="Năm học"
+                            Style="width:100%" />
+        </div>
+
+        <div class="col-md-4">
+            <RadzenTextBox Value="@DonVi"
+                           ValueChanged="@(v => OnDonViChanged(v))"
+                           Placeholder="Đơn vị chủ trì"
+                           Style="width:100%" />
+        </div>
+    </div>
+</RadzenCard>
+
+@code {
+    [Parameter] public string? NamHoc { get; set; }
+    [Parameter] public EventCallback<string?> NamHocChanged { get; set; }
+
+    [Parameter] public string? DonVi { get; set; }
+    [Parameter] public EventCallback<string?> DonViChanged { get; set; }
+
+    List<string> NamHocs = new() { "2022", "2023", "2024" };
+
+    async Task OnNamHocChanged(object? value)
+    {
+        NamHoc = value?.ToString();
+        await NamHocChanged.InvokeAsync(NamHoc);
+    }
+
+    async Task OnDonViChanged(object? value)
+    {
+        DonVi = value?.ToString();
+        await DonViChanged.InvokeAsync(DonVi);
+    }
+}

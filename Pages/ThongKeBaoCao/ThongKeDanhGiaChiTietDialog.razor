@@ -1,0 +1,57 @@
+﻿@using api.Models.QLKHCanBo
+@inject DialogService DialogService
+
+<h4>
+    <i class="bx bx-list-ul"></i>
+    Danh sách đề tài theo kết quả đánh giá
+</h4>
+
+<RadzenDataGrid Data="@DanhSach"
+                TItem="tbDeTaiKHCanBo"
+                AllowPaging="true"
+                PageSize="10"
+                AllowSorting="true"
+                AllowFiltering="true"
+                Responsive="true"
+                Style="margin-top:12px">
+
+    <Columns>
+        <RadzenDataGridColumn Property="MaSo"
+                              Title="Mã số"
+                              Width="120px" />
+
+        <RadzenDataGridColumn Property="TenDeTai"
+                              Title="Tên đề tài" />
+
+        <RadzenDataGridColumn Property="NamHoc"
+                              Title="Năm học"
+                              Width="120px" />
+
+        <RadzenDataGridColumn Property="DonViChuTri"
+                              Title="Đơn vị chủ trì" />
+
+        <RadzenDataGridColumn Property="LoaiDeTai"
+                              Title="Loại đề tài"
+                              Width="150px" />
+
+        <RadzenDataGridColumn Property="XepLoai"
+                              Title="Kết quả đánh giá"
+                              Width="150px" />
+    </Columns>
+
+</RadzenDataGrid>
+
+<div class="text-end mt-3">
+    <RadzenButton Text="Đóng"
+                  Icon="close"
+                  ButtonStyle="ButtonStyle.Secondary"
+                  Click="@(() => DialogService.Close())" />
+</div>
+
+@code {
+    // =========================
+    // DỮ LIỆU TRUYỀN TỪ TRANG CHA
+    // =========================
+    [Parameter]
+    public List<tbDeTaiKHCanBo> DanhSach { get; set; } = new();
+}

@@ -1,0 +1,48 @@
+﻿@namespace QLCongViec.Components.ThongKe.Results
+
+@using Radzen
+
+<RadzenCard Style="margin-top:10px">
+    <h6>📊 Kết quả thống kê số lượng đề tài</h6>
+
+    @if (Data == null || Data.Count == 0)
+    {
+        <p>Không có dữ liệu thống kê</p>
+    }
+    else
+    {
+        <RadzenDataGrid Data="@Data"
+                        TItem="CountVM"
+                        AllowPaging="true"
+                        PageSize="10"
+                        ShowPagingSummary="true">
+            <Columns>
+                <RadzenDataGridColumn TItem="CountVM"
+                                      Property="NamHoc"
+                                      Title="Năm học" />
+
+                <RadzenDataGridColumn TItem="CountVM"
+                                      Property="CapDeTai"
+                                      Title="Cấp đề tài" />
+
+                <RadzenDataGridColumn TItem="CountVM"
+                                      Property="SoLuong"
+                                      Title="Số lượng"
+                                      TextAlign="TextAlign.Center" />
+            </Columns>
+        </RadzenDataGrid>
+    }
+</RadzenCard>
+
+@code {
+    [Parameter]
+    public List<CountVM>? Data { get; set; }
+
+    // ⚠️ PHẢI TRÙNG 100% với FilterCount
+    public class CountVM
+    {
+        public string? NamHoc { get; set; }
+        public string? CapDeTai { get; set; }
+        public int SoLuong { get; set; }
+    }
+}

@@ -1,0 +1,54 @@
+﻿@namespace QLCongViec.Components.ThongKe.Results
+
+@using Radzen
+
+<RadzenCard Style="margin-top:10px">
+    <h6>⏱️ Kết quả thống kê tiến độ thực hiện</h6>
+
+    @if (Data == null)
+    {
+        <p>Chưa có dữ liệu thống kê</p>
+    }
+    else
+    {
+        <RadzenProgressBar Value="@Data.PhanTramHoanThanh"
+                           ShowValue="true"
+                           Unit="%"
+                           Style="height:24px;margin-bottom:15px" />
+
+        <div class="row text-center">
+            <div class="col-md-4">
+                🟢 <b>Hoàn thành</b><br />
+                <span style="font-size:18px">@Data.HoanThanh</span>
+            </div>
+
+            <div class="col-md-4">
+                🟡 <b>Đang thực hiện</b><br />
+                <span style="font-size:18px">@Data.DangThucHien</span>
+            </div>
+
+            <div class="col-md-4">
+                🔴 <b>Quá hạn</b><br />
+                <span style="font-size:18px">@Data.QuaHan</span>
+            </div>
+        </div>
+    }
+</RadzenCard>
+
+@code {
+    [Parameter]
+    public ProgressVM? Data { get; set; }
+
+    // ⚠️ PHẢI TRÙNG 100% với FilterProgress
+    public class ProgressVM
+    {
+        public int HoanThanh { get; set; }
+        public int DangThucHien { get; set; }
+        public int QuaHan { get; set; }
+
+        public int Tong => HoanThanh + DangThucHien + QuaHan;
+
+        public int PhanTramHoanThanh =>
+            Tong == 0 ? 0 : (int)Math.Round((double)HoanThanh / Tong * 100);
+    }
+}

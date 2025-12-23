@@ -1,0 +1,19 @@
+﻿<RadzenCard Style="margin-bottom:10px">
+    <h6>🏆 Tiêu chí thống kê xếp loại</h6>
+
+    <RadzenTextBox Value="@DonVi"
+                   ValueChanged="@(v => OnDonViChanged(v))"
+                   Placeholder="Đơn vị chủ trì"
+                   Style="width:100%" />
+</RadzenCard>
+
+@code {
+    [Parameter] public string? DonVi { get; set; }
+    [Parameter] public EventCallback<string?> DonViChanged { get; set; }
+
+    async Task OnDonViChanged(object? value)
+    {
+        DonVi = value?.ToString();
+        await DonViChanged.InvokeAsync(DonVi);
+    }
+}

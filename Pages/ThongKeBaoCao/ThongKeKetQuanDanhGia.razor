@@ -1,0 +1,147 @@
+﻿@page "/thong-ke/nhiem-vu"
+@attribute [Authorize]
+
+@using api.Models.QLKHCanBo
+@inject ClientServices client
+@inject NotificationService notificationService
+
+<h3>Thống kê số lượng nhiệm vụ NCKH</h3>
+
+<RadzenCard Style="margin-bottom:15px">
+    <div class="row">
+        <div class="col-md-4">
+            <RadzenDropDown Data="@NamList"
+                            TValue="string"
+                            @bind-Value="Nam"
+                            Placeholder="Năm học" />
+        </div>
+        <div class="col-md-4">
+            <RadzenDropDown Data="@CapDeTaiList"
+                            TValue="int?"
+                            @bind-Value="CapDeTai"
+                            Placeholder="Cấp đề tài" />
+
+            <RadzenDropDown Data="@LinhVucList"
+                            TValue="int?"
+                            @bind-Value="LinhVuc"
+                            Placeholder="Lĩnh vực" />
+
+        </div>
+    </div>
+</RadzenCard>
+
+<RadzenButton Text="Thống kê"
+              Icon="search"
+              ButtonStyle="ButtonStyle.Primary"
+              Click="@ThongKe"
+              Style="margin-bottom:10px" />
+
+<RadzenDataGrid Data="@KetQua"
+                TItem="ThongKeNhiemVuVM"
+                AllowPaging="true"
+                PageSize="10">
+    <Columns>
+        <RadzenDataGridColumn TItem="ThongKeNhiemVuVM" Property="Nam" Title="Năm" />
+        <RadzenDataGridColumn TItem="ThongKeNhiemVuVM" Property="CapDeTai" Title="Cấp đề tài" />
+        <RadzenDataGridColumn TItem="ThongKeNhiemVuVM" Property="LinhVuc" Title="Lĩnh vực" />
+        <RadzenDataGridColumn TItem="ThongKeNhiemVuVM" Property="SoLuong" Title="Số lượng nhiệm vụ" />
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    // =======================
+    // DTO TỪ API
+    // =======================
+    List<tbDeTaiKHCanBo> DeTais = new();
+
+    // =======================
+    // DROPDOWN DATA
+    // =======================
+    List<string> NamList = new();
+    List<int> CapDeTaiList = new();
+    List<int> LinhVucList = new();
+
+    string? Nam;
+    int? CapDeTai;
+    int? LinhVuc;
+
+    // =======================
+    // KẾT QUẢ THỐNG KÊ
+    // =======================
+    List<ThongKeNhiemVuVM> KetQua = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await client.apiSevices.GetAll<tbDeTaiKHCanBo>();
+            DeTais = result ?? new List<tbDeTaiKHCanBo>();
+
+            if (!DeTais.Any())
+                return;
+
+            NamList = DeTais
+                .Where(x => !string.IsNullOrEmpty(x.NamHoc))
+                .Select(x => x.NamHoc!)
+                .Distinct()
+                .ToList();
+
+            CapDeTaiList = DeTais
+                .Where(x => x.IdCapDeTai.HasValue)
+                .Select(x => x.IdCapDeTai!.Value)
+                .Distinct()
+                .ToList();
+
+            LinhVucList = DeTais
+                .Where(x => x.IdLinhVuc.HasValue)
+                .Select(x => x.IdLinhVuc!.Value)
+                .Distinct()
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            DeTais = new();
+            notificationService.Notify(
+                Radzen.NotificationSeverity.Error,
+                "Lỗi",
+                ex.Message
+            );
+        }
+    }
+
+
+    void ThongKe()
+    {
+        KetQua = DeTais
+            .Where(x =>
+                (Nam == null || x.NamHoc == Nam) &&
+                (CapDeTai == null || x.IdCapDeTai == CapDeTai) &&
+                (LinhVuc == null || x.IdLinhVuc == LinhVuc)
+            )
+            .GroupBy(x => new
+            {
+                x.NamHoc,
+                x.IdCapDeTai,
+                x.IdLinhVuc
+            })
+            .Select(g => new ThongKeNhiemVuVM
+            {
+                Nam = g.Key.NamHoc ?? "",
+                CapDeTai = g.Key.IdCapDeTai ?? 0,
+                LinhVuc = g.Key.IdLinhVuc ?? 0,
+                SoLuong = g.Count()
+            })
+            .ToList();
+    }
+
+    // =======================
+    // VIEWMODEL THỐNG KÊ
+    // =======================
+    class ThongKeNhiemVuVM
+    {
+        public string Nam { get; set; } = "";
+        public int CapDeTai { get; set; }
+        public int LinhVuc { get; set; }
+        public int SoLuong { get; set; }
+    }
+}

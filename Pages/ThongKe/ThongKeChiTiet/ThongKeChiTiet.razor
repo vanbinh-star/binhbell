@@ -1,0 +1,42 @@
+﻿@namespace QLCongViec.Components.ThongKe.ThongKeChiTiet
+@using api.Models.QLKHCanBo
+@inject DialogService dialog
+
+
+<RadzenCard Style="padding:16px; width:1000px">
+    <h4>📋 Chi tiết đề tài theo xếp loại</h4>
+
+    <p>
+        <b>Xếp loại:</b>
+        <span class="badge bg-primary">@XepLoai</span>
+    </p>
+
+    <RadzenDataGrid Data="@DanhSach"
+                    TItem="tbDeTaiKHCanBo"
+                    AllowPaging="true"
+                    PageSize="10"
+                    Style="margin-top:10px">
+
+        <Columns>
+            <RadzenDataGridColumn Property="MaSo" Title="Mã đề tài" />
+            <RadzenDataGridColumn Property="TenDeTai" Title="Tên đề tài" />
+            <RadzenDataGridColumn Property="NamHoc" Title="Năm học" />
+            <RadzenDataGridColumn Property="DonViChuTri" Title="Đơn vị chủ trì" />
+            <RadzenDataGridColumn Property="ChuNhiem" Title="Chủ nhiệm" />
+            <RadzenDataGridColumn Property="NgayNghiemThu" Title="Ngày nghiệm thu" />
+            <RadzenDataGridColumn Property="XepLoai" Title="Xếp loại" />
+        </Columns>
+    </RadzenDataGrid>
+
+    <div class="text-end mt-3">
+        <RadzenButton Text="Đóng"
+                      Icon="close"
+                      ButtonStyle="ButtonStyle.Secondary"
+                      Click="() => dialog.Close()" />
+    </div>
+</RadzenCard>
+
+@code {
+    [Parameter] public string? XepLoai { get; set; }
+    [Parameter] public List<tbDeTaiKHCanBo>? DanhSach { get; set; }
+}

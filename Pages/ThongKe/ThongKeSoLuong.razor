@@ -1,0 +1,42 @@
+﻿@using api.Models.QLKHCanBo
+@inject ClientServices client
+
+<RadzenCard Style="padding:16px">
+    <h5>📊 Thống kê số lượng nhiệm vụ</h5>
+
+    <RadzenButton Text="🔍 Thống kê" Click="@LoadData" />
+
+    <RadzenDataGrid Data="@data" TItem="ThongKeSoLuongVM" Style="margin-top:12px">
+        <Columns>
+            <RadzenDataGridColumn Property="NamHoc" Title="Năm học" />
+            <RadzenDataGridColumn Property="CapDeTai" Title="Cấp đề tài" />
+            <RadzenDataGridColumn Property="SoLuong" Title="Số lượng" />
+        </Columns>
+    </RadzenDataGrid>
+</RadzenCard>
+
+@code {
+    List<ThongKeSoLuongVM> data = new();
+
+    async Task LoadData()
+    {
+        var list = await client.apiSevices.GetAll<tbDeTaiKHCanBo>();
+
+        data = list
+            .GroupBy(x => new { x.NamHoc, x.IdCapDeTai })
+            .Select(g => new ThongKeSoLuongVM
+            {
+                NamHoc = g.Key.NamHoc,
+                CapDeTai = g.Key.IdCapDeTai.ToString(),
+                SoLuong = g.Count()
+            })
+            .ToList();
+    }
+
+    class ThongKeSoLuongVM
+    {
+        public string NamHoc { get; set; }
+        public string CapDeTai { get; set; }
+        public int SoLuong { get; set; }
+    }
+}

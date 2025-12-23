@@ -1,0 +1,70 @@
+﻿@namespace QLCongViec.Components.ThongKe.Results
+
+@using Radzen
+@inject DialogService dialog
+@using QLCongViec.Components.ThongKe.ThongKeChiTiet
+
+<RadzenCard Style="margin-top:10px">
+    <h6>🏆 Kết quả thống kê xếp loại</h6>
+
+    @if (Data == null || !Data.Any())
+    {
+        <p>Chưa có dữ liệu thống kê</p>
+    }
+    else
+    {
+        <RadzenDataGrid Data="@Data"
+                        TItem="RateVM"
+                        ShowPagingSummary="true"
+                        PageSize="10">
+            <Columns>
+                <RadzenDataGridColumn TItem="RateVM"
+                                      Property="XepLoai"
+                                      Title="Xếp loại" />
+
+                <RadzenDataGridColumn TItem="RateVM"
+                                      Property="SoLuong"
+                                      Title="Số lượng"
+                                      TextAlign="TextAlign.Center" />
+
+                <RadzenDataGridColumn TItem="RateVM"
+                                      Title="Thao tác"
+                                      TextAlign="TextAlign.Center">
+                    <Template Context="item">
+                        <RadzenButton Icon="visibility"
+                                      Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Light"
+                                      Click="@(() => XemChiTiet(item.XepLoai))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    }
+</RadzenCard>
+
+@code {
+    [Parameter]
+    public List<RateVM>? Data { get; set; }
+
+    // ⚠️ PHẢI TRÙNG 100% với FilterRate
+    public class RateVM
+    {
+        public string XepLoai { get; set; } = "";
+        public int SoLuong { get; set; }
+    }
+
+    void XemChiTiet(string xepLoai)
+    {
+        dialog.Open<ThongKeChiTiet>(
+            "Chi tiết xếp loại",
+            new Dictionary<string, object?>
+            {
+                { "XepLoai", xepLoai }
+            },
+            new DialogOptions
+            {
+                Width = "600px",
+                Height = "400px"
+            });
+    }
+}

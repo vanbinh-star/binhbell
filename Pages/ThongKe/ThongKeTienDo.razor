@@ -1,0 +1,80 @@
+﻿@using api.Models.QLKHCanBo
+@inject ClientServices client
+@inject NotificationService notification
+
+<RadzenCard Style="padding:16px">
+
+    <h5>📊 Thống kê tiến độ thực hiện</h5>
+
+    @if (dangTai)
+    {
+        <p>Đang tải dữ liệu...</p>
+    }
+    else
+    {
+        <RadzenProgressBar Value="@vm.PhanTramHoanThanh"
+                           ShowValue="true"
+                           Unit="%" />
+
+        <div class="row mt-3 text-center">
+            <div class="col-md-4">🟢 Hoàn thành: <b>@vm.HoanThanh</b></div>
+            <div class="col-md-4">🟡 Đang thực hiện: <b>@vm.DangThucHien</b></div>
+            <div class="col-md-4">🔴 Quá hạn: <b>@vm.QuaHan</b></div>
+        </div>
+    }
+
+</RadzenCard>
+
+@code {
+    bool dangTai = true;
+    TienDoVM vm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var list = await client.apiSevices.GetAll<tbDeTaiKHCanBo>();
+
+            if (list == null || !list.Any())
+            {
+                notification.Notify(NotificationSeverity.Warning,
+                    "Không có dữ liệu");
+                return;
+            }
+
+            TinhTienDo(list);
+        }
+        finally
+        {
+            dangTai = false;
+        }
+    }
+
+    void TinhTienDo(List<tbDeTaiKHCanBo> list)
+    {
+        var now = DateOnly.FromDateTime(DateTime.Now);
+
+        vm.HoanThanh = list.Count(x => x.NgayNghiemThu != null);
+
+        vm.DangThucHien = list.Count(x =>
+            x.NgayNghiemThu == null &&
+            x.HanHoanThanh != null &&
+            now <= x.HanHoanThanh.Value);
+
+        vm.QuaHan = list.Count(x =>
+            x.NgayNghiemThu == null &&
+            x.HanHoanThanh != null &&
+            now > x.HanHoanThanh.Value);
+    }
+
+    class TienDoVM
+    {
+        public int HoanThanh { get; set; }
+        public int DangThucHien { get; set; }
+        public int QuaHan { get; set; }
+
+        public int Tong => HoanThanh + DangThucHien + QuaHan;
+        public int PhanTramHoanThanh =>
+            Tong == 0 ? 0 : (int)Math.Round((double)HoanThanh / Tong * 100);
+    }
+}

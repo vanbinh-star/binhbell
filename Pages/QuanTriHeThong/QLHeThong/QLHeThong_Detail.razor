@@ -1,0 +1,98 @@
+@using IDC.Frontend.Services.ApiService
+@using QLCongViec.Models
+@inject Radzen.DialogService dialog
+@inject NotificationService notificationService
+@inject NavigationManager UriHelper
+@inject IJSRuntime JSRuntime
+@inject ApiServices apiService
+@using QLCongViec.Components
+@using System.Linq.Expressions
+@inject ClientServices client
+
+
+
+<RadzenTemplateForm TItem="tbChucNang"
+                    Data="@Data"
+                    Submit="@Submit">
+
+    <!-- QUAN TRỌNG: giữ cha -->
+    <input type="hidden" @bind="Data.ChucNangCha" />
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <FormItem Label="Đường dẫn">
+                    <RadzenTextBox @bind-Value="Data.DuongDan" Style="width:100%" />
+                </FormItem>
+            </div>
+
+            <div class="col-12">
+                <FormItem Label="Tên chức năng">
+                    <RadzenTextBox @bind-Value="Data.TenChucNang" Style="width:100%" />
+                </FormItem>
+            </div>
+
+            <div class="col-12">
+                <FormItem Label="Biểu tượng">
+                    <RadzenTextBox @bind-Value="Data.BieuTuong" Style="width:100%" />
+                </FormItem>
+            </div>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-12 text-center">
+                <RadzenButton ButtonType="ButtonType.Submit" Text="Lưu" />
+                <RadzenButton Text="Thoát"
+                              ButtonStyle="ButtonStyle.Secondary"
+                              Click="@(() => ChangeFeature.InvokeAsync(null))" />
+            </div>
+        </div>
+    </div>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public tbChucNang Record { get; set; }
+    [Parameter] public EventCallback<tbChucNang> ChangeFeature { get; set; }
+
+    tbChucNang Data = new tbChucNang();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // EDIT
+        if (Record != null && Record.IdChucNang != 0)
+        {
+            var list = await apiService.GetAll<tbChucNang>($"(IdChucNang == {Record.IdChucNang})");
+            Data = list.FirstOrDefault() ?? new tbChucNang();
+            return;
+        }
+
+        // ADD NEW (ROOT hoặc CHILD)
+        Data = new tbChucNang
+        {
+            ChucNangCha = Record?.ChucNangCha   // 🔥 DÒNG QUYẾT ĐỊNH CHA – CON
+        };
+    }
+
+    
+
+    async Task Submit(tbChucNang feature)
+{
+    if (feature.IdChucNang == 0)
+    {
+        feature.STT = await client.numServices.GetInt<tbNhom>("seq_STTChucNang");
+        feature.IdChucNang = await client.numServices.GetInt<tbNhom>("seq_tbChucNang");
+
+        // 🔥 GIỮ NGUYÊN feature.ChucNangCha
+        await apiService.Create<tbChucNang>(feature);
+    }
+    else
+    {
+        await apiService.Update<tbChucNang>(feature);
+    }
+
+    await ChangeFeature.InvokeAsync(feature);
+}
+
+
+
+}

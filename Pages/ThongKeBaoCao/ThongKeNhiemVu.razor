@@ -1,0 +1,213 @@
+﻿@page "/thong-ke-nhiem-vu"
+@attribute [Authorize]
+
+@using api.Models.QLKHCanBo
+@inject ClientServices client
+@inject NotificationService notificationService
+
+<h3 style="
+    color: #0b2e6f;
+    font-weight: 800;
+    font-size: 26px;
+    text-transform: uppercase;
+    text-align: center;
+    letter-spacing: 1px;
+    margin: 16px 0 24px;
+">
+    <i class="bx bx-bar-chart" style="margin-right:6px; font-size:22px;"></i>
+    Thống kê kết quả đánh giá nhiệm vụ NCKH
+</h3>
+
+
+<!-- =========================
+     BỘ LỌC
+========================= -->
+<RadzenCard Style="margin-bottom:15px">
+    <div class="row g-3">
+
+        <!-- TIÊU CHÍ -->
+        <div class="col-md-4">
+            <RadzenDropDown Data="@TieuChiList"
+                            TextProperty="Text"
+                            ValueProperty="Value"
+                            TValue="string"
+                            @bind-Value="TieuChi"
+                            Placeholder="Chọn tiêu chí thống kê"
+                            Style="width:100%" />
+        </div>
+
+        <!-- NĂM HỌC -->
+        <div class="col-md-4">
+            <RadzenDropDown Data="@NamHocList"
+                            TValue="string"
+                            @bind-Value="NamHoc"
+                            AllowClear="true"
+                            Placeholder="Năm học (tùy chọn)"
+                            Style="width:100%" />
+        </div>
+
+    </div>
+</RadzenCard>
+
+<RadzenButton Text="Thống kê"
+              Icon="search"
+              ButtonStyle="ButtonStyle.Primary"
+              Click="@ThongKe"
+              Style="margin-bottom:10px" />
+
+<!-- =========================
+     KẾT QUẢ
+========================= -->
+<RadzenDataGrid Data="@KetQua"
+                TItem="ThongKeDonVM"
+                AllowPaging="true"
+                PageSize="10">
+    <Columns>
+        <RadzenDataGridColumn Property="Ten" Title="Tiêu chí thống kê" />
+        <RadzenDataGridColumn Property="SoLuong" Title="Số lượng đề tài" />
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+
+    // =========================
+    // DỮ LIỆU GỐC
+    // =========================
+    List<tbDeTaiKHCanBo> DeTais = new();
+
+    // =========================
+    // BỘ LỌC
+    // =========================
+    string? TieuChi;
+    string? NamHoc;
+
+    List<string> NamHocList = new();
+
+    List<TieuChiItem> TieuChiList = new()
+    {
+        new() { Value = "NAM", Text = "Thống kê theo năm học" },
+        new() { Value = "CAP", Text = "Thống kê theo cấp đề tài" },
+        new() { Value = "TINHTRANG", Text = "Thống kê theo tình trạng đề tài" },
+        new() { Value = "LINHVUC", Text = "Thống kê theo lĩnh vực" }
+    };
+
+    // =========================
+    // KẾT QUẢ
+    // =========================
+    List<ThongKeDonVM> KetQua = new();
+
+    // =========================
+    // LOAD DATA
+    // =========================
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await client.apiSevices.GetAll<tbDeTaiKHCanBo>();
+            DeTais = result ?? new();
+
+            NamHocList = DeTais
+                .Where(x => !string.IsNullOrWhiteSpace(x.NamHoc))
+                .Select(x => x.NamHoc!)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(
+                Radzen.NotificationSeverity.Error,
+                "Lỗi",
+                ex.Message
+            );
+        }
+    }
+
+    // =========================
+    // THỐNG KÊ
+    // =========================
+    void ThongKe()
+    {
+        KetQua.Clear();
+
+        if (string.IsNullOrEmpty(TieuChi))
+            return;
+
+        var data = DeTais
+            .Where(x => string.IsNullOrWhiteSpace(NamHoc) || x.NamHoc == NamHoc);
+
+        switch (TieuChi)
+        {
+            // ===== THEO NĂM HỌC =====
+            case "NAM":
+                KetQua = data
+                    .Where(x => !string.IsNullOrWhiteSpace(x.NamHoc))
+                    .GroupBy(x => x.NamHoc!)
+                    .Select(g => new ThongKeDonVM
+                    {
+                        Ten = g.Key,
+                        SoLuong = g.Count()
+                    })
+                    .OrderBy(x => x.Ten)
+                    .ToList();
+                break;
+
+            // ===== THEO CẤP ĐỀ TÀI =====
+            case "CAP":
+                KetQua = data
+                    .Where(x => x.IdCapDeTai.HasValue)
+                    .GroupBy(x => x.IdCapDeTai!.Value)
+                    .Select(g => new ThongKeDonVM
+                    {
+                        Ten = $"Cấp đề tài {g.Key}",
+                        SoLuong = g.Count()
+                    })
+                    .OrderBy(x => x.Ten)
+                    .ToList();
+                break;
+
+            // ===== THEO TÌNH TRẠNG =====
+            case "TINHTRANG":
+                KetQua = data
+                    .Where(x => x.IdTinhTrangDeTaiKHCB.HasValue)
+                    .GroupBy(x => x.IdTinhTrangDeTaiKHCB!.Value)
+                    .Select(g => new ThongKeDonVM
+                    {
+                        Ten = $"Tình trạng {g.Key}",
+                        SoLuong = g.Count()
+                    })
+                    .OrderBy(x => x.Ten)
+                    .ToList();
+                break;
+
+            // ===== THEO LĨNH VỰC =====
+            case "LINHVUC":
+                KetQua = data
+                    .Where(x => x.IdLinhVuc.HasValue)
+                    .GroupBy(x => x.IdLinhVuc!.Value)
+                    .Select(g => new ThongKeDonVM
+                    {
+                        Ten = $"Lĩnh vực {g.Key}",
+                        SoLuong = g.Count()
+                    })
+                    .OrderBy(x => x.Ten)
+                    .ToList();
+                break;
+        }
+    }
+
+    // =========================
+    // VIEW MODEL
+    // =========================
+    class ThongKeDonVM
+    {
+        public string Ten { get; set; } = string.Empty;
+        public int SoLuong { get; set; }
+    }
+
+    class TieuChiItem
+    {
+        public string Value { get; set; } = string.Empty;
+        public string Text { get; set; } = string.Empty;
+    }
+}
