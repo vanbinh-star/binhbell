@@ -1,0 +1,853 @@
+﻿@page "/thong-ke-tong-hop"
+@attribute [Authorize]
+
+@using api.Models.QLKHCanBo
+@inject ClientServices client
+@inject NotificationService notificationService
+@inject DialogService dialogService
+@inject IJSRuntime jsRuntime
+
+<h3 style="
+    color: #0b2e6f;
+    font-weight: 800;
+    font-size: 26px;
+    text-transform: uppercase;
+    text-align: center;
+    letter-spacing: 1px;
+    margin: 16px 0 24px;
+">
+    <i class="bx bx-bar-chart" style="margin-right:6px; font-size:22px;"></i>
+    Thống kê NCKH tổng hợp
+</h3>
+
+<RadzenCard Style="margin-bottom:15px">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <RadzenDropDown Data="@LoaiThongKeList"
+                            TValue="string"
+                            TextProperty="Text"
+                            ValueProperty="Value"
+                            @bind-Value="LoaiThongKe"
+                            Placeholder="Loại thống kê/báo cáo"
+                            Style="width:100%" />
+        </div>
+
+        @if (LoaiThongKe == "count")
+        {
+            <div class="col-md-4">
+                <RadzenDropDown Data="@NhomTheoList"
+                                TValue="string"
+                                TextProperty="Text"
+                                ValueProperty="Value"
+                                @bind-Value="NhomTheo"
+                                Placeholder="Nhóm theo"
+                                Style="width:100%" />
+            </div>
+        }
+
+        @if (LoaiThongKe == "hours")
+        {
+            <div class="col-md-4">
+                <RadzenDropDown Data="@NhomTheoGioList"
+                                TValue="string"
+                                TextProperty="Text"
+                                ValueProperty="Value"
+                                @bind-Value="NhomTheoGio"
+                                Placeholder="Nhóm theo giờ NCKH"
+                                Style="width:100%" />
+            </div>
+        }
+
+        <div class="col-md-4">
+            <RadzenDropDown Data="@NamHocList"
+                            TValue="string"
+                            @bind-Value="BoLoc.NamHoc"
+                            AllowClear="true"
+                            Placeholder="Thời gian (năm học)"
+                            Style="width:100%" />
+        </div>
+
+        <div class="col-md-4">
+            <RadzenDropDown Data="@CapDeTaiList"
+                            TValue="int?"
+                            @bind-Value="BoLoc.CapDeTai"
+                            AllowClear="true"
+                            Placeholder="Cấp đề tài"
+                            Style="width:100%" />
+        </div>
+
+        <div class="col-md-4">
+            <RadzenDropDown Data="@DonViChuTriList"
+                            TValue="string"
+                            @bind-Value="BoLoc.DonViChuTri"
+                            AllowClear="true"
+                            Placeholder="Đơn vị chủ trì"
+                            Style="width:100%" />
+        </div>
+
+        <div class="col-md-4">
+            <RadzenDropDown Data="@TrangThaiList"
+                            TValue="int?"
+                            @bind-Value="BoLoc.TrangThai"
+                            AllowClear="true"
+                            Placeholder="Trạng thái nhiệm vụ"
+                            Style="width:100%" />
+        </div>
+
+        <div class="col-md-4">
+            <RadzenDropDown Data="@XepLoaiList"
+                            TValue="string"
+                            @bind-Value="BoLoc.XepLoai"
+                            AllowClear="true"
+                            Placeholder="Kết quả đánh giá"
+                            Style="width:100%" />
+        </div>
+
+        <div class="col-md-4">
+            <RadzenDropDown Data="@LoaiNhiemVuList"
+                            TValue="string"
+                            @bind-Value="BoLoc.LoaiNhiemVu"
+                            AllowClear="true"
+                            Placeholder="Loại nhiệm vụ"
+                            Style="width:100%" />
+        </div>
+
+        <div class="col-md-4">
+            <RadzenDropDown Data="@LinhVucList"
+                            TValue="int?"
+                            @bind-Value="BoLoc.LinhVuc"
+                            AllowClear="true"
+                            Placeholder="Lĩnh vực nghiên cứu"
+                            Style="width:100%" />
+        </div>
+    </div>
+</RadzenCard>
+
+<div style="margin-bottom:12px">
+    <RadzenButton Text="Thống kê"
+                  Icon="search"
+                  ButtonStyle="ButtonStyle.Primary"
+                  Click="@ThongKeAsync"
+                  Style="margin-right:8px" />
+    <RadzenButton Text="Xuất báo cáo"
+                  Icon="download"
+                  ButtonStyle="ButtonStyle.Secondary"
+                  Disabled="@(!CoKetQua)"
+                  Click="@XuatBaoCaoAsync" />
+</div>
+
+@if (LoaiThongKe == "progress" && TienDo != null)
+{
+    <RadzenCard Style="margin-bottom:12px">
+        <div class="row text-center">
+            <div class="col-md-4">
+                <div style="font-weight:600">Hoàn thành</div>
+                <div style="font-size:20px">@TienDo.HoanThanh</div>
+            </div>
+            <div class="col-md-4">
+                <div style="font-weight:600">Đang thực hiện</div>
+                <div style="font-size:20px">@TienDo.DangThucHien</div>
+            </div>
+            <div class="col-md-4">
+                <div style="font-weight:600">Quá hạn</div>
+                <div style="font-size:20px">@TienDo.QuaHan</div>
+            </div>
+        </div>
+    </RadzenCard>
+}
+else if (LoaiThongKe == "hours")
+{
+    <RadzenDataGrid Data="@KetQuaGio"
+                    TItem="ThongKeGioItem"
+                    AllowPaging="true"
+                    PageSize="10"
+                    Responsive="true">
+        <Columns>
+            <RadzenDataGridColumn Property="DoiTuong" Title="Đối tượng" />
+            <RadzenDataGridColumn Property="TongGio" Title="Tổng giờ NCKH" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn Property="SoBanGhi" Title="Số bản ghi" TextAlign="TextAlign.Center" />
+        </Columns>
+    </RadzenDataGrid>
+}
+else
+{
+    <RadzenDataGrid Data="@KetQua"
+                    TItem="ThongKeKetQuaItem"
+                    AllowPaging="true"
+                    PageSize="10"
+                    Responsive="true">
+        <Columns>
+            <RadzenDataGridColumn Property="Ten" Title="Nhóm thống kê" />
+            <RadzenDataGridColumn Property="SoLuong" Title="Số lượng" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn Title="Chi tiết" Width="120px" TextAlign="TextAlign.Center">
+                <Template Context="item">
+                    <RadzenButton Text="Xem"
+                                  Icon="visibility"
+                                  Size="ButtonSize.Small"
+                                  ButtonStyle="ButtonStyle.Info"
+                                  Click="@(() => XemChiTiet(item))" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    const string ThongBaoKhongCoDuLieu = "Không có dữ liệu phù hợp";
+
+    ThongKeFilter BoLoc = new();
+    string LoaiThongKe = "count";
+    string NhomTheo = "NamHoc";
+    string NhomTheoGio = "DonVi";
+    bool UseMockData = true;
+
+    List<tbDeTaiKHCanBo> DeTais = new();
+    List<tbTongHopGioNCKH> TongHopGios = new();
+
+    List<string> NamHocList = new();
+    List<int> CapDeTaiList = new();
+    List<string> DonViChuTriList = new();
+    List<int> TrangThaiList = new();
+    List<string> XepLoaiList = new();
+    List<string> LoaiNhiemVuList = new();
+    List<int> LinhVucList = new();
+
+    List<ThongKeKetQuaItem> KetQua = new();
+    List<ThongKeGioItem> KetQuaGio = new();
+    ThongKeTienDo? TienDo;
+    bool CoKetQua => KetQua.Count > 0 || KetQuaGio.Count > 0 || TienDo != null;
+
+    List<ThongKeOption> LoaiThongKeList = new()
+    {
+        new() { Value = "count", Text = "Thống kê số lượng nhiệm vụ NCKH" },
+        new() { Value = "progress", Text = "Thống kê tiến độ thực hiện" },
+        new() { Value = "rate", Text = "Thống kê kết quả đánh giá/xếp loại" },
+        new() { Value = "hours", Text = "Tổng giờ NCKH theo cá nhân/đơn vị" }
+    };
+
+    List<ThongKeOption> NhomTheoList = new()
+    {
+        new() { Value = "NamHoc", Text = "Theo năm học" },
+        new() { Value = "CapDeTai", Text = "Theo cấp đề tài" },
+        new() { Value = "LinhVuc", Text = "Theo lĩnh vực nghiên cứu" },
+        new() { Value = "DonViChuTri", Text = "Theo đơn vị chủ trì" },
+        new() { Value = "TrangThai", Text = "Theo trạng thái nhiệm vụ" },
+        new() { Value = "LoaiNhiemVu", Text = "Theo loại nhiệm vụ" }
+    };
+
+    List<ThongKeOption> NhomTheoGioList = new()
+    {
+        new() { Value = "DonVi", Text = "Theo đơn vị" },
+        new() { Value = "CanBo", Text = "Theo cá nhân" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (UseMockData)
+            {
+                (DeTais, TongHopGios) = TaoDuLieuGia();
+            }
+            else
+            {
+                DeTais = await client.apiSevices.GetAll<tbDeTaiKHCanBo>() ?? new();
+                TongHopGios = await client.apiSevices.GetAll<tbTongHopGioNCKH>() ?? new();
+            }
+
+            NamHocList = DeTais
+                .Select(x => x.NamHoc)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct()
+                .OrderBy(x => x)
+                .ToList()!;
+
+            CapDeTaiList = DeTais
+                .Where(x => x.IdCapDeTai.HasValue)
+                .Select(x => x.IdCapDeTai!.Value)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToList();
+
+            DonViChuTriList = DeTais
+                .Select(x => x.DonViChuTri)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct()
+                .OrderBy(x => x)
+                .ToList()!;
+
+            TrangThaiList = DeTais
+                .Where(x => x.IdTinhTrangDeTaiKHCB.HasValue)
+                .Select(x => x.IdTinhTrangDeTaiKHCB!.Value)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToList();
+
+            XepLoaiList = DeTais
+                .Select(x => x.XepLoai)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct()
+                .OrderBy(x => x)
+                .ToList()!;
+
+            LoaiNhiemVuList = DeTais
+                .Select(x => x.LoaiDeTai)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct()
+                .OrderBy(x => x)
+                .ToList()!;
+
+            LinhVucList = DeTais
+                .Where(x => x.IdLinhVuc.HasValue)
+                .Select(x => x.IdLinhVuc!.Value)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            notificationService.Notify(
+                Radzen.NotificationSeverity.Error,
+                "Lỗi",
+                ex.Message
+            );
+        }
+    }
+
+    async Task ThongKeAsync()
+    {
+        KetQua.Clear();
+        KetQuaGio.Clear();
+        TienDo = null;
+
+        if (LoaiThongKe == "hours")
+        {
+            var duLieuGio = TongHopGios.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(BoLoc.NamHoc))
+            {
+                duLieuGio = duLieuGio.Where(x => x.NamHoc == BoLoc.NamHoc);
+            }
+
+            KetQuaGio = NhomTheoGio switch
+            {
+                "CanBo" => duLieuGio
+                    .GroupBy(x => x.IdCanBo)
+                    .Select(g => new ThongKeGioItem
+                    {
+                        DoiTuong = g.Key.HasValue ? $"Cán bộ {g.Key}" : "Chưa xác định",
+                        TongGio = g.Sum(x => x.SoGioNCKH ?? 0),
+                        SoBanGhi = g.Count()
+                    })
+                    .OrderByDescending(x => x.TongGio)
+                    .ToList(),
+                _ => duLieuGio
+                    .GroupBy(x => x.IdDonVi)
+                    .Select(g => new ThongKeGioItem
+                    {
+                        DoiTuong = g.Key.HasValue ? $"Đơn vị {g.Key}" : "Chưa xác định",
+                        TongGio = g.Sum(x => x.SoGioNCKH ?? 0),
+                        SoBanGhi = g.Count()
+                    })
+                    .OrderByDescending(x => x.TongGio)
+                    .ToList()
+            };
+
+            if (KetQuaGio.Count == 0)
+            {
+                notificationService.Notify(Radzen.NotificationSeverity.Warning, "Thông báo", ThongBaoKhongCoDuLieu);
+            }
+
+            return;
+        }
+
+        var duLieu = ApplyFilters(DeTais).ToList();
+
+        if (LoaiThongKe == "progress")
+        {
+            var now = DateOnly.FromDateTime(DateTime.Now);
+            var hoanThanh = duLieu.Count(x => x.NgayNghiemThu != null);
+            var dangThucHien = duLieu.Count(x => x.NgayNghiemThu == null && (x.HanHoanThanh == null || now <= x.HanHoanThanh));
+            var quaHan = duLieu.Count(x => x.NgayNghiemThu == null && x.HanHoanThanh != null && now > x.HanHoanThanh);
+
+            TienDo = new ThongKeTienDo
+            {
+                HoanThanh = hoanThanh,
+                DangThucHien = dangThucHien,
+                QuaHan = quaHan
+            };
+
+            if (hoanThanh + dangThucHien + quaHan == 0)
+            {
+                notificationService.Notify(Radzen.NotificationSeverity.Warning, "Thông báo", ThongBaoKhongCoDuLieu);
+            }
+
+            return;
+        }
+
+        if (LoaiThongKe == "rate")
+        {
+            KetQua = duLieu
+                .GroupBy(x => x.XepLoai)
+                .Select(g => new ThongKeKetQuaItem
+                {
+                    Key = g.Key,
+                    Ten = string.IsNullOrWhiteSpace(g.Key) ? "Chưa xác định" : g.Key!,
+                    SoLuong = g.Count()
+                })
+                .OrderByDescending(x => x.SoLuong)
+                .ToList();
+        }
+        else
+        {
+            KetQua = NhomTheo switch
+            {
+                "CapDeTai" => duLieu
+                    .GroupBy(x => x.IdCapDeTai)
+                    .Select(g => new ThongKeKetQuaItem
+                    {
+                        Key = g.Key?.ToString(),
+                        Ten = g.Key.HasValue ? $"Cấp đề tài {g.Key}" : "Chưa xác định",
+                        SoLuong = g.Count()
+                    })
+                    .OrderBy(x => x.Ten)
+                    .ToList(),
+                "LinhVuc" => duLieu
+                    .GroupBy(x => x.IdLinhVuc)
+                    .Select(g => new ThongKeKetQuaItem
+                    {
+                        Key = g.Key?.ToString(),
+                        Ten = g.Key.HasValue ? $"Lĩnh vực {g.Key}" : "Chưa xác định",
+                        SoLuong = g.Count()
+                    })
+                    .OrderBy(x => x.Ten)
+                    .ToList(),
+                "DonViChuTri" => duLieu
+                    .GroupBy(x => x.DonViChuTri)
+                    .Select(g => new ThongKeKetQuaItem
+                    {
+                        Key = g.Key,
+                        Ten = string.IsNullOrWhiteSpace(g.Key) ? "Chưa xác định" : g.Key!,
+                        SoLuong = g.Count()
+                    })
+                    .OrderBy(x => x.Ten)
+                    .ToList(),
+                "TrangThai" => duLieu
+                    .GroupBy(x => x.IdTinhTrangDeTaiKHCB)
+                    .Select(g => new ThongKeKetQuaItem
+                    {
+                        Key = g.Key?.ToString(),
+                        Ten = g.Key.HasValue ? $"Trạng thái {g.Key}" : "Chưa xác định",
+                        SoLuong = g.Count()
+                    })
+                    .OrderBy(x => x.Ten)
+                    .ToList(),
+                "LoaiNhiemVu" => duLieu
+                    .GroupBy(x => x.LoaiDeTai)
+                    .Select(g => new ThongKeKetQuaItem
+                    {
+                        Key = g.Key,
+                        Ten = string.IsNullOrWhiteSpace(g.Key) ? "Chưa xác định" : g.Key!,
+                        SoLuong = g.Count()
+                    })
+                    .OrderBy(x => x.Ten)
+                    .ToList(),
+                _ => duLieu
+                    .GroupBy(x => x.NamHoc)
+                    .Select(g => new ThongKeKetQuaItem
+                    {
+                        Key = g.Key,
+                        Ten = string.IsNullOrWhiteSpace(g.Key) ? "Chưa xác định" : g.Key!,
+                        SoLuong = g.Count()
+                    })
+                    .OrderBy(x => x.Ten)
+                    .ToList()
+            };
+        }
+
+        if (KetQua.Count == 0)
+        {
+            notificationService.Notify(Radzen.NotificationSeverity.Warning, "Thông báo", ThongBaoKhongCoDuLieu);
+        }
+
+        await Task.CompletedTask;
+    }
+
+    void XemChiTiet(ThongKeKetQuaItem item)
+    {
+        var duLieu = ApplyFilters(DeTais).ToList();
+
+        if (LoaiThongKe == "rate")
+        {
+            duLieu = string.IsNullOrWhiteSpace(item.Key)
+                ? duLieu.Where(x => string.IsNullOrWhiteSpace(x.XepLoai)).ToList()
+                : duLieu.Where(x => x.XepLoai == item.Key).ToList();
+        }
+        else
+        {
+            switch (NhomTheo)
+            {
+                case "CapDeTai":
+                    duLieu = string.IsNullOrWhiteSpace(item.Key)
+                        ? duLieu.Where(x => !x.IdCapDeTai.HasValue).ToList()
+                        : duLieu.Where(x => x.IdCapDeTai?.ToString() == item.Key).ToList();
+                    break;
+                case "LinhVuc":
+                    duLieu = string.IsNullOrWhiteSpace(item.Key)
+                        ? duLieu.Where(x => !x.IdLinhVuc.HasValue).ToList()
+                        : duLieu.Where(x => x.IdLinhVuc?.ToString() == item.Key).ToList();
+                    break;
+                case "DonViChuTri":
+                    duLieu = string.IsNullOrWhiteSpace(item.Key)
+                        ? duLieu.Where(x => string.IsNullOrWhiteSpace(x.DonViChuTri)).ToList()
+                        : duLieu.Where(x => x.DonViChuTri == item.Key).ToList();
+                    break;
+                case "TrangThai":
+                    duLieu = string.IsNullOrWhiteSpace(item.Key)
+                        ? duLieu.Where(x => !x.IdTinhTrangDeTaiKHCB.HasValue).ToList()
+                        : duLieu.Where(x => x.IdTinhTrangDeTaiKHCB?.ToString() == item.Key).ToList();
+                    break;
+                case "LoaiNhiemVu":
+                    duLieu = string.IsNullOrWhiteSpace(item.Key)
+                        ? duLieu.Where(x => string.IsNullOrWhiteSpace(x.LoaiDeTai)).ToList()
+                        : duLieu.Where(x => x.LoaiDeTai == item.Key).ToList();
+                    break;
+                default:
+                    duLieu = string.IsNullOrWhiteSpace(item.Key)
+                        ? duLieu.Where(x => string.IsNullOrWhiteSpace(x.NamHoc)).ToList()
+                        : duLieu.Where(x => x.NamHoc == item.Key).ToList();
+                    break;
+            }
+        }
+
+        dialogService.Open<ThongKeTongHopChiTietDialog>(
+            $"Danh sách nhiệm vụ ({item.Ten})",
+            new Dictionary<string, object>
+            {
+                { "DanhSach", duLieu }
+            },
+            new DialogOptions
+            {
+                Width = "1000px",
+                Height = "650px",
+                Resizable = true
+            });
+    }
+
+    async Task XuatBaoCaoAsync()
+    {
+        if (!CoKetQua)
+        {
+            return;
+        }
+
+        var csvBuilder = new System.Text.StringBuilder();
+
+        if (LoaiThongKe == "progress" && TienDo != null)
+        {
+            csvBuilder.AppendLine("ChiTiet,SoLuong");
+            csvBuilder.AppendLine($"{EscapeCsv("Hoàn thành")},{TienDo.HoanThanh}");
+            csvBuilder.AppendLine($"{EscapeCsv("Đang thực hiện")},{TienDo.DangThucHien}");
+            csvBuilder.AppendLine($"{EscapeCsv("Quá hạn")},{TienDo.QuaHan}");
+        }
+        else if (LoaiThongKe == "hours")
+        {
+            csvBuilder.AppendLine("DoiTuong,TongGio,SoBanGhi");
+            foreach (var item in KetQuaGio)
+            {
+                csvBuilder.AppendLine($"{EscapeCsv(item.DoiTuong)},{item.TongGio},{item.SoBanGhi}");
+            }
+        }
+        else
+        {
+            csvBuilder.AppendLine("NhomThongKe,SoLuong");
+            foreach (var item in KetQua)
+            {
+                csvBuilder.AppendLine($"{EscapeCsv(item.Ten)},{item.SoLuong}");
+            }
+        }
+
+        await jsRuntime.InvokeVoidAsync("downloadFileFromText", $"thong-ke-{LoaiThongKe}.csv", csvBuilder.ToString());
+    }
+
+    static string EscapeCsv(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return "\"\"";
+        }
+
+        var escaped = value.Replace("\"", "\"\"");
+        return $"\"{escaped}\"";
+    }
+
+    static IEnumerable<tbDeTaiKHCanBo> ApplyFilters(IEnumerable<tbDeTaiKHCanBo> data, ThongKeFilter boLoc)
+    {
+        var query = data;
+
+        if (!string.IsNullOrWhiteSpace(boLoc.NamHoc))
+        {
+            query = query.Where(x => x.NamHoc == boLoc.NamHoc);
+        }
+
+        if (boLoc.CapDeTai.HasValue)
+        {
+            query = query.Where(x => x.IdCapDeTai == boLoc.CapDeTai);
+        }
+
+        if (!string.IsNullOrWhiteSpace(boLoc.DonViChuTri))
+        {
+            query = query.Where(x => !string.IsNullOrWhiteSpace(x.DonViChuTri)
+                && x.DonViChuTri.Contains(boLoc.DonViChuTri, StringComparison.CurrentCultureIgnoreCase));
+        }
+
+        if (boLoc.TrangThai.HasValue)
+        {
+            query = query.Where(x => x.IdTinhTrangDeTaiKHCB == boLoc.TrangThai);
+        }
+
+        if (!string.IsNullOrWhiteSpace(boLoc.XepLoai))
+        {
+            query = query.Where(x => x.XepLoai == boLoc.XepLoai);
+        }
+
+        if (!string.IsNullOrWhiteSpace(boLoc.LoaiNhiemVu))
+        {
+            query = query.Where(x => x.LoaiDeTai == boLoc.LoaiNhiemVu);
+        }
+
+        if (boLoc.LinhVuc.HasValue)
+        {
+            query = query.Where(x => x.IdLinhVuc == boLoc.LinhVuc);
+        }
+
+        return query;
+    }
+
+    IEnumerable<tbDeTaiKHCanBo> ApplyFilters(IEnumerable<tbDeTaiKHCanBo> data)
+        => ApplyFilters(data, BoLoc);
+
+    class ThongKeFilter
+    {
+        public string? NamHoc { get; set; }
+        public int? CapDeTai { get; set; }
+        public string? DonViChuTri { get; set; }
+        public int? TrangThai { get; set; }
+        public string? XepLoai { get; set; }
+        public string? LoaiNhiemVu { get; set; }
+        public int? LinhVuc { get; set; }
+    }
+
+    class ThongKeOption
+    {
+        public string Value { get; set; } = string.Empty;
+        public string Text { get; set; } = string.Empty;
+    }
+
+    class ThongKeKetQuaItem
+    {
+        public string? Key { get; set; }
+        public string Ten { get; set; } = string.Empty;
+        public int SoLuong { get; set; }
+    }
+
+    class ThongKeGioItem
+    {
+        public string DoiTuong { get; set; } = string.Empty;
+        public int TongGio { get; set; }
+        public int SoBanGhi { get; set; }
+    }
+
+    class ThongKeTienDo
+    {
+        public int HoanThanh { get; set; }
+        public int DangThucHien { get; set; }
+        public int QuaHan { get; set; }
+    }
+
+    static (List<tbDeTaiKHCanBo> DeTais, List<tbTongHopGioNCKH> TongHopGios) TaoDuLieuGia()
+    {
+        var deTais = new List<tbDeTaiKHCanBo>
+        {
+            new()
+            {
+                IdDeTaiKHCanBo = 1,
+                MaSo = "DT-001",
+                TenDeTai = "Nghiên cứu trí tuệ nhân tạo trong giáo dục",
+                IdLinhVuc = 10,
+                DonViChuTri = "Khoa CNTT",
+                IdCapDeTai = 1,
+                HanHoanThanh = new DateOnly(2024, 6, 30),
+                NamHoc = "2023-2024",
+                TongKinhPhi = 50000000,
+                SQDXetChon = "SX-001",
+                NgayXetChon = new DateOnly(2023, 9, 15),
+                SoHopDong = "HD-001",
+                NgayKyHopDong = new DateOnly(2023, 10, 1),
+                SQDNghiemThu = "SN-001",
+                NgayNghiemThu = new DateOnly(2024, 6, 20),
+                IdTinhTrangDeTaiKHCB = 3,
+                XepLoai = "Xuất sắc",
+                LoaiDeTai = "Đề tài cơ sở",
+                DonViThamGia = "Phòng Khoa học",
+                NguonThuTuChuyenGiaoCongNghe = 12000000
+            },
+            new()
+            {
+                IdDeTaiKHCanBo = 2,
+                MaSo = "DT-002",
+                TenDeTai = "Chuyển đổi số trong quản lý đào tạo",
+                IdLinhVuc = 8,
+                DonViChuTri = "Phòng Đào tạo",
+                IdCapDeTai = 2,
+                HanHoanThanh = new DateOnly(2025, 3, 31),
+                NamHoc = "2024-2025",
+                TongKinhPhi = 80000000,
+                NgayXetChon = new DateOnly(2024, 2, 10),
+                SoHopDong = "HD-002",
+                NgayKyHopDong = new DateOnly(2024, 2, 20),
+                IdTinhTrangDeTaiKHCB = 2,
+                XepLoai = null,
+                LoaiDeTai = "Dự án chuyển giao",
+                DonViThamGia = "Khoa Kinh tế",
+                NguonThuTuChuyenGiaoCongNghe = 30000000
+            },
+            new()
+            {
+                IdDeTaiKHCanBo = 3,
+                MaSo = "DT-003",
+                TenDeTai = "Ứng dụng IoT trong nông nghiệp đô thị",
+                IdLinhVuc = 12,
+                DonViChuTri = "Viện Công nghệ",
+                IdCapDeTai = 1,
+                HanHoanThanh = new DateOnly(2024, 12, 31),
+                NamHoc = "2023-2024",
+                TongKinhPhi = 60000000,
+                NgayXetChon = new DateOnly(2023, 8, 5),
+                SoHopDong = "HD-003",
+                NgayKyHopDong = new DateOnly(2023, 8, 12),
+                IdTinhTrangDeTaiKHCB = 1,
+                XepLoai = "Khá",
+                LoaiDeTai = "Đề tài cơ sở",
+                DonViThamGia = "Trung tâm ƯD CNTT",
+                NguonThuTuChuyenGiaoCongNghe = 0
+            },
+            new()
+            {
+                IdDeTaiKHCanBo = 4,
+                MaSo = "DT-004",
+                TenDeTai = "Nghiên cứu phát triển năng lượng tái tạo",
+                IdLinhVuc = 15,
+                DonViChuTri = "Khoa Điện",
+                IdCapDeTai = 3,
+                HanHoanThanh = new DateOnly(2023, 12, 15),
+                NamHoc = "2022-2023",
+                TongKinhPhi = 100000000,
+                NgayXetChon = new DateOnly(2022, 10, 10),
+                SoHopDong = "HD-004",
+                NgayKyHopDong = new DateOnly(2022, 10, 25),
+                SQDNghiemThu = "SN-004",
+                NgayNghiemThu = new DateOnly(2023, 12, 10),
+                IdTinhTrangDeTaiKHCB = 3,
+                XepLoai = "Tốt",
+                LoaiDeTai = "Đề tài cấp Bộ",
+                DonViThamGia = "Khoa Cơ khí",
+                NguonThuTuChuyenGiaoCongNghe = 45000000
+            },
+            new()
+            {
+                IdDeTaiKHCanBo = 5,
+                MaSo = "DT-005",
+                TenDeTai = "Hệ thống phân tích dữ liệu học tập",
+                IdLinhVuc = 10,
+                DonViChuTri = "Khoa CNTT",
+                IdCapDeTai = 2,
+                HanHoanThanh = new DateOnly(2024, 5, 1),
+                NamHoc = "2023-2024",
+                TongKinhPhi = 70000000,
+                NgayXetChon = new DateOnly(2023, 11, 1),
+                SoHopDong = "HD-005",
+                NgayKyHopDong = new DateOnly(2023, 11, 15),
+                IdTinhTrangDeTaiKHCB = 2,
+                XepLoai = null,
+                LoaiDeTai = "Đề tài cấp Trường",
+                DonViThamGia = "Phòng Đào tạo",
+                NguonThuTuChuyenGiaoCongNghe = 15000000
+            },
+            new()
+            {
+                IdDeTaiKHCanBo = 6,
+                MaSo = "DT-006",
+                TenDeTai = "Thí điểm AI hỗ trợ cố vấn học tập",
+                IdLinhVuc = 10,
+                DonViChuTri = "Khoa CNTT",
+                IdCapDeTai = 1,
+                HanHoanThanh = new DateOnly(2024, 4, 30),
+                NamHoc = "2023-2024",
+                TongKinhPhi = 30000000,
+                NgayXetChon = new DateOnly(2023, 7, 30),
+                SoHopDong = "HD-006",
+                NgayKyHopDong = new DateOnly(2023, 8, 15),
+                IdTinhTrangDeTaiKHCB = 2,
+                XepLoai = null,
+                LoaiDeTai = "Nhiệm vụ đặc thù",
+                DonViThamGia = "Khoa Tâm lý",
+                NguonThuTuChuyenGiaoCongNghe = 5000000
+            }
+        };
+
+        var tongHopGios = new List<tbTongHopGioNCKH>
+        {
+            new()
+            {
+                IdTongHopGioNCKH = 1,
+                IdCanBo = 101,
+                IdDonVi = 20,
+                NamHoc = "2023-2024",
+                SoGioNCKH = 120,
+                IdCanBoTongHop = 201,
+                NgayTongHop = new DateOnly(2024, 5, 15),
+                FileTongHop = "gio-nckh-2023-2024.pdf",
+                NgayXacNhan = new DateOnly(2024, 5, 30)
+            },
+            new()
+            {
+                IdTongHopGioNCKH = 2,
+                IdCanBo = 102,
+                IdDonVi = 20,
+                NamHoc = "2023-2024",
+                SoGioNCKH = 95,
+                IdCanBoTongHop = 201,
+                NgayTongHop = new DateOnly(2024, 5, 16),
+                FileTongHop = "gio-nckh-2023-2024.pdf",
+                NgayXacNhan = new DateOnly(2024, 5, 30)
+            },
+            new()
+            {
+                IdTongHopGioNCKH = 3,
+                IdCanBo = 103,
+                IdDonVi = 30,
+                NamHoc = "2024-2025",
+                SoGioNCKH = 60,
+                IdCanBoTongHop = 202,
+                NgayTongHop = new DateOnly(2024, 12, 1),
+                FileTongHop = "gio-nckh-2024-2025.pdf",
+                NgayXacNhan = new DateOnly(2024, 12, 10)
+            },
+            new()
+            {
+                IdTongHopGioNCKH = 4,
+                IdCanBo = null,
+                IdDonVi = 25,
+                NamHoc = "2023-2024",
+                SoGioNCKH = 150,
+                IdCanBoTongHop = 203,
+                NgayTongHop = new DateOnly(2024, 5, 20),
+                FileTongHop = "gio-nckh-don-vi-25.pdf",
+                NgayXacNhan = new DateOnly(2024, 6, 1)
+            }
+        };
+
+        return (deTais, tongHopGios);
+    }
+}
