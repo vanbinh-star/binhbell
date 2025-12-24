@@ -15,4 +15,4 @@ IConfigurationRoot configuration = new ConfigurationBuilder()
 optionsBuilder.UseSqlServer(configuration.GetConnectionString("DBConnection"));
 }
 }
-`
+`# binh123
