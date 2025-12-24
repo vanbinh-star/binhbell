@@ -7,9 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Pages\ThongKe2\**" />
     <Compile Remove="Pages\ThongKe\**" />
+    <Content Remove="Pages\ThongKe2\**" />
     <Content Remove="Pages\ThongKe\**" />
+    <EmbeddedResource Remove="Pages\ThongKe2\**" />
     <EmbeddedResource Remove="Pages\ThongKe\**" />
+    <None Remove="Pages\ThongKe2\**" />
     <None Remove="Pages\ThongKe\**" />
   </ItemGroup>
 
@@ -36,6 +40,8 @@
   </ItemGroup>
    <ItemGroup>
 <Folder Include="Components\FeedbackUI\" />
+<Folder Include="Pages\NewFolder2\" />
+<Folder Include="Pages\ThongKeBaoCao\NewFolder\" />
 <Folder Include="wwwroot\SaveFile\" />
   </ItemGroup>
    <ItemGroup>

@@ -1,0 +1,66 @@
+﻿@namespace QLCongViec.Pages.ThongKe.NCKH
+
+<RadzenCard Style="margin-bottom:16px">
+    <h5>👤 Thống kê theo cán bộ</h5>
+
+    <div class="row g-3">
+        <div class="col-md-4">
+            <RadzenTextBox Value="@CanBoKeyword"
+                           ValueChanged="OnCanBoKeywordChanged"
+                           Placeholder="Tìm kiếm cán bộ (từ khóa)"
+                           Style="width:100%" />
+        </div>
+        <div class="col-md-4">
+            <RadzenButton Text="Cập nhật hồ sơ"
+                          Icon="refresh"
+                          ButtonStyle="ButtonStyle.Light"
+                          Click="OnRefresh" />
+        </div>
+    </div>
+
+    <div class="row g-3" style="margin-top:12px">
+        <div class="col-md-4">
+            <RadzenCard Style="text-align:center">
+                <div style="font-size:13px; color:#6c757d">Tổng số đề tài tham gia</div>
+                <div style="font-size:22px; font-weight:700">@Summary.TongDeTai</div>
+            </RadzenCard>
+        </div>
+        <div class="col-md-4">
+            <RadzenCard Style="text-align:center">
+                <div style="font-size:13px; color:#6c757d">Tổng số công bố</div>
+                <div style="font-size:22px; font-weight:700">@Summary.TongCongBo</div>
+            </RadzenCard>
+        </div>
+        <div class="col-md-4">
+            <RadzenCard Style="text-align:center">
+                <div style="font-size:13px; color:#6c757d">Tổng số giờ NCKH</div>
+                <div style="font-size:22px; font-weight:700">@Summary.TongGioNckh</div>
+            </RadzenCard>
+        </div>
+    </div>
+
+    <div style="margin-top:16px">
+        <h6>Tiến trình nghiên cứu theo năm</h6>
+        <RadzenDataGrid Data="@Progress" TItem="CanBoProgressVM">
+            <Columns>
+                <RadzenDataGridColumn Property="NamHoc" Title="Năm học" />
+                <RadzenDataGridColumn Property="SoDeTai" Title="Số đề tài" TextAlign="TextAlign.Center" />
+                <RadzenDataGridColumn Property="SoGioNckh" Title="Số giờ NCKH" TextAlign="TextAlign.Center" />
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+</RadzenCard>
+
+@code {
+    [Parameter] public string? CanBoKeyword { get; set; }
+    [Parameter] public EventCallback<string?> CanBoKeywordChanged { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public CanBoSummaryVM Summary { get; set; } = new();
+    [Parameter] public List<CanBoProgressVM> Progress { get; set; } = new();
+
+    async Task OnCanBoKeywordChanged(object? value)
+    {
+        CanBoKeyword = value?.ToString();
+        await CanBoKeywordChanged.InvokeAsync(CanBoKeyword);
+    }
+}
