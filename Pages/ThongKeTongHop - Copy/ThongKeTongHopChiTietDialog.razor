@@ -1,0 +1,25 @@
+﻿@using api.Models.QLKHCanBo
+
+<RadzenDataGrid Data="@DanhSach"
+                TItem="tbDeTaiKHCanBo"
+                AllowPaging="true"
+                PageSize="10"
+                Responsive="true">
+    <Columns>
+        <RadzenDataGridColumn Property="MaSo" Title="Mã số" />
+        <RadzenDataGridColumn Property="TenDeTai" Title="Tên đề tài" />
+        <RadzenDataGridColumn Property="NamHoc" Title="Năm học" />
+        <RadzenDataGridColumn Property="DonViChuTri" Title="Đơn vị chủ trì" />
+        <RadzenDataGridColumn Property="LoaiDeTai" Title="Loại nhiệm vụ" />
+        <RadzenDataGridColumn Property="IdCapDeTai" Title="Cấp đề tài" TextAlign="TextAlign.Center" />
+        <RadzenDataGridColumn Property="IdLinhVuc" Title="Lĩnh vực" TextAlign="TextAlign.Center" />
+        <RadzenDataGridColumn Property="IdTinhTrangDeTaiKHCB" Title="Trạng thái" TextAlign="TextAlign.Center" />
+        <RadzenDataGridColumn Property="XepLoai" Title="Xếp loại" />
+        <RadzenDataGridColumn Property="HanHoanThanh" Title="Hạn hoàn thành" />
+        <RadzenDataGridColumn Property="NgayNghiemThu" Title="Ngày nghiệm thu" />
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    [Parameter] public List<tbDeTaiKHCanBo> DanhSach { get; set; } = new();
+}
